@@ -1,4 +1,4 @@
-# proggettodst-leone-solito
+# progettodst-leone-solito
 programma progetto dst
 % Parametri orbitali
 mu = 3.986e14;                    % parametro gravitazionale standard (Terra)
