@@ -15,7 +15,7 @@ Nsamp = length(T);
 
 omega_0 = sqrt(mu/a^3);                         % velocità angolare media del satellite
 M = omega_0 * T;                                % anomalia media
-m = 500;                                      % massa satellite
+m = 500;                                        % massa satellite
 
 N = 8;                                          % numero di satelliti
 
@@ -46,13 +46,23 @@ G = eye(N);
 Gamma = (eye(N) + D + G) \ (L + G);
 
 %% 3. Posizioni Desiderate e Parametri di Controllo  FUNZIONA SOLO PER 8 SATELLITI!!!!!!!!
-l_edge = 5; % Lato del cubo (m) 
-l = l_edge / 2;
-% Coordinate dei vertici del cubo rispetto al target centrale
-pos_des = [ l,  l,  l;  -l,  l,  l;   l, -l,  l;  -l, -l,  l;
-            l,  l, -l;  -l,  l, -l;   l, -l, -l;  -l, -l, -l]';
-
+R_target = 5; % Raggio della formazione sferica finale (metri)
 Target_point = zeros(6, N);
+pos_des = zeros(3, N);
+ 
+golden_angle = pi * (3 - sqrt(5));
+ 
+for i = 1:N
+    % Calcolo di phi (Latitudine) e theta (Azimut)
+    z_fib = 1 - ((i - 1) / (N - 1)) * 2;
+    phi_fib = asin(z_fib);
+    theta_fib = mod((i - 1) * golden_angle, 2*pi);
+    % Assegnazione coordinate finali
+    pos_des(1, i) = R_target * cos(phi_fib) * cos(theta_fib);   % X
+    pos_des(2, i) = R_target * cos(phi_fib) * sin(theta_fib);   % Y
+    pos_des(3, i) = R_target * sin(phi_fib);                    % Z
+end
+ 
 Target_point(1:3, :) = pos_des; % Le velocità di riferimento relative sono 0
  
 % Matrici di peso e Guadagno di Accoppiamento
@@ -187,12 +197,10 @@ for k = 1 : Nsamp-1
                 sum_consensus = sum_consensus + adjacency_matrix(i,j) * (zeta_bar_j - zeta_bar_i);
             end
         end
-        % Legge di controllo con consenso locale (Eq. 15 adattata ai riferimenti) [cite: 922]
-        d_i = D(i,i);
-        g_i = G(i,i);
+        % Legge di controllo con consenso locale 
         zeta_bar_0 = zeros(6,1); % Target è all'origine
-        u_tilde = eta * (1 + d_i + g_i)^-1 * Kk(:,:,k) * (g_i * (zeta_bar_0 - zeta_bar_i) + sum_consensus);
-        % Input totale e Saturazione (Eq. 40, 55) [cite: 1087-1090, 1208-1210]
+        u_tilde = eta * (1 + D(i,i) + G(i,i))^-1 * Kk(:,:,k) * (G(i,i) * (zeta_bar_0 - zeta_bar_i) + sum_consensus);
+        % Input totale e Saturazione
         u_tot = u_ir + u_tilde;
         u_sat = max(min(u_tot, u_max), -u_max);
         % Propagazione degli stati
